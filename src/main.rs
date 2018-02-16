@@ -11,22 +11,26 @@ use std::io::{BufRead, BufReader, Error};
 use std::fs::File;
 use tokio_core::reactor;
 use rand::Rng;
-use egg_mode::tweet::DraftTweet;
+use egg_mode::{tweet::DraftTweet, direct::send, user};
 
 fn main() {
     println!("starting...");
 
-    let time = std::time::Duration::from_millis(stuff::time().unwrap());
+    // get sleep time from config
+    let time_conf = stuff::time().unwrap();
+    let time = std::time::Duration::from_millis(time_conf);
 
     let mut core = reactor::Core::new().unwrap();
     let handle = core.handle();
 
     let token = stuff::load();
 
+    // panic if tokens are invalid or expired
     if let Err(err) = core.run(egg_mode::verify_tokens(&token, &handle)) {
         panic!("invalid or expired tokens: {:?}", err);
     }
 
+    // tweet loop
     loop {
         let number = get_number().unwrap();
 
@@ -35,24 +39,27 @@ fn main() {
             Ok(n) => n,
             Err(err) => {
                 println!("failed to get line: {:?}\nfallbacking...", err);
-                if core.run(egg_mode::direct::send(egg_mode::user::UserID::ScreenName("geniiii_"), &stuff::err_dm_desc(&err), &token, &handle)).is_err() {
+                // if sending a dm failed
+                if core.run(send(user::UserID::ScreenName("geniiii_"), &stuff::err_dm_desc(&err), &token, &handle)).is_err() {
                     println!("failed to send DM (most likely missing permissions to send DMs)\ncontinuing anyways...");
                 }
                 String::from("something broke! @geniiii_ welp, here's a random number: ") + &number.to_string()
             },
         };
 
+        // add random member from config to start and end of string
         line.insert_str(0, stuff::random_string_start().unwrap().as_str());
         line.push_str(stuff::random_string_end().unwrap().as_str());
 
-        println!("sending message: {}", &line);
+        println!("sending tweet: {}", &line);
 
-        // more bad code
+        // tries to send tweet
         let send = core.run(DraftTweet::new(line.clone()).send(&token, &handle));
         if let Err(err) = send {
             println!("failed to send tweet: {:?}\ncontinuing anyways...", err);
         } else {
-            println!("sent message: {}", &line);
+            println!("sent tweet: {}", &line);
+            println!("sleeping for {}ms...", &time_conf);
             std::thread::sleep(time);
         }
     }

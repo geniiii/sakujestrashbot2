@@ -1,8 +1,9 @@
 extern crate egg_mode;
 extern crate rand;
-extern crate tokio_core;
+
 extern crate serde;
 extern crate serde_json;
+extern crate tokio_core;
 
 use rand::Rng;
 use std::io::Error;
@@ -13,22 +14,22 @@ struct Keys {
     consumer_key: String,
     consumer_secret: String,
     access_key: String,
-    access_secret: String
+    access_secret: String,
 }
 
 #[derive(Deserialize)]
 struct WordsStart {
-    words_start: serde_json::value::Value
+    words_start: serde_json::value::Value,
 }
 
 #[derive(Deserialize)]
 struct WordsEnd {
-    words_end: serde_json::value::Value
+    words_end: serde_json::value::Value,
 }
 
 #[derive(Deserialize)]
 struct Time {
-    time: u64
+    time: u64,
 }
 
 pub fn load() -> egg_mode::Token {
@@ -75,7 +76,7 @@ pub fn err_dm_desc(err: &Error) -> String {
     let err_error = err.get_ref().unwrap();
 
     let mut idk = String::from(err_error.description());
-    idk.insert_str(0, "Description: ");
+    idk.insert_str(0, "error description: ");
 
     idk
 }

@@ -1,23 +1,31 @@
-#[macro_use] extern crate serde_derive;
 extern crate egg_mode;
 extern crate rand;
-extern crate tokio_core;
 extern crate serde;
+#[macro_use]
+extern crate serde_derive;
 extern crate serde_json;
+extern crate tokio_core;
 
 mod stuff;
 
-use std::io::{BufRead, BufReader, Error};
+use std::io::{BufRead, BufReader, Error, ErrorKind::Other};
 use std::fs::File;
 use tokio_core::reactor;
 use rand::Rng;
-use egg_mode::{tweet::DraftTweet, direct::send, user};
+use egg_mode::{user, direct::send, tweet::DraftTweet};
 
 fn main() {
     println!("starting...");
 
     // get sleep time from config
-    let time_conf = stuff::time().unwrap();
+    let time_conf = match stuff::time() {
+        Ok(n) => n,
+        Err(_) => {
+            println!("missing \"time\" member in config, fallbacking to 900000...");
+            900000
+        }
+    };
+
     let time = std::time::Duration::from_millis(time_conf);
 
     let mut core = reactor::Core::new().unwrap();
@@ -40,11 +48,18 @@ fn main() {
             Err(err) => {
                 println!("failed to get line: {:?}\nfallbacking...", err);
                 // if sending a dm failed
-                if core.run(send(user::UserID::ScreenName("geniiii_"), &stuff::err_dm_desc(&err), &token, &handle)).is_err() {
+                if core.run(send(
+                    user::UserID::ScreenName("geniiii_"),
+                    &stuff::err_dm_desc(&err),
+                    &token,
+                    &handle,
+                )).is_err()
+                {
                     println!("failed to send DM (most likely missing permissions to send DMs)\ncontinuing anyways...");
                 }
-                String::from("something broke! @geniiii_ welp, here's a random number: ") + &number.to_string()
-            },
+                String::from("something broke! @geniiii_ welp, here's a random number: ")
+                    + &number.to_string()
+            }
         };
 
         // add random member from config to start and end of string
@@ -55,6 +70,7 @@ fn main() {
 
         // tries to send tweet
         let send = core.run(DraftTweet::new(line.clone()).send(&token, &handle));
+        // pretty sure i can do this better (maybe only do this for duplicate tweet?)
         if let Err(err) = send {
             println!("failed to send tweet: {:?}\ncontinuing anyways...", err);
         } else {
@@ -71,7 +87,8 @@ fn get_number() -> Result<usize, Error> {
     let count = BufReader::new(f).lines().count();
 
     if count == 0 {
-        panic!("file is empty");
+        // would a panic be better in this case?
+        return Err(Error::new(Other, "file is empty"));
     }
 
     let random_number = rand::thread_rng().gen_range(1, count);
@@ -82,8 +99,11 @@ fn get_number() -> Result<usize, Error> {
 // any better way to do this?
 fn get_line(random_number: usize) -> Result<String, Error> {
     let f = File::open("stuff.sakujes")?;
-    let line = BufReader::new(f).lines().nth(random_number).unwrap().unwrap();
+    let line = BufReader::new(f)
+        .lines()
+        .nth(random_number)
+        .unwrap()
+        .unwrap();
 
     Ok(line)
 }
-

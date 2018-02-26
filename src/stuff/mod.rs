@@ -32,7 +32,7 @@ struct Time {
     time: u64,
 }
 
-pub fn load() -> egg_mode::Token {
+pub fn token() -> egg_mode::Token {
     let keys = keys().unwrap();
 
     let con_token = egg_mode::KeyPair::new(keys.consumer_key, keys.consumer_secret);

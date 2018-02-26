@@ -8,11 +8,13 @@ extern crate tokio_core;
 
 mod stuff;
 
-use std::io::{BufRead, BufReader, Error, ErrorKind::Other};
+use std::io::{BufRead, BufReader, Error};
 use std::fs::File;
 use tokio_core::reactor;
 use rand::Rng;
-use egg_mode::{user, direct::send, tweet::DraftTweet};
+use egg_mode::user;
+use egg_mode::direct::send;
+use egg_mode::tweet::DraftTweet;
 
 fn main() {
     println!("starting...");
@@ -31,7 +33,7 @@ fn main() {
     let mut core = reactor::Core::new().unwrap();
     let handle = core.handle();
 
-    let token = stuff::load();
+    let token = stuff::token();
 
     // panic if tokens are invalid or expired
     if let Err(err) = core.run(egg_mode::verify_tokens(&token, &handle)) {
@@ -53,8 +55,7 @@ fn main() {
                     &stuff::err_dm_desc(&err),
                     &token,
                     &handle,
-                )).is_err()
-                {
+                )).is_err() {
                     println!("failed to send DM (most likely missing permissions to send DMs)\ncontinuing anyways...");
                 }
                 String::from("something broke! @geniiii_ welp, here's a random number: ")
@@ -87,8 +88,7 @@ fn get_number() -> Result<usize, Error> {
     let count = BufReader::new(f).lines().count();
 
     if count == 0 {
-        // would a panic be better in this case?
-        return Err(Error::new(Other, "file is empty"));
+        panic!("stuff.sakujes is empty");
     }
 
     let random_number = rand::thread_rng().gen_range(1, count);
